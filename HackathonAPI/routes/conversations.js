@@ -1,22 +1,21 @@
 const express = require('express');
-const { Conversation} = require('../models/Conversation');
-const { User} = require('../models/User');
-  // Ensure models are imported
+const { Conversation } = require('../models/Conversation');
+const { User } = require('../models/User');
+// Ensure models are imported
 const router = express.Router();
 const crypto = require('crypto');
 
 // Create a new conversation
 // Create a new conversation
+// Create a new conversation with encrypted session keys from frontend
 router.post('/', async (req, res) => {
     const { user1_id, user2_id, encrypted_session_key_user1, encrypted_session_key_user2 } = req.body;
 
     try {
-        // Check if both users exist
         const user1 = await User.findByPk(user1_id);
         const user2 = await User.findByPk(user2_id);
         if (!user1 || !user2) return res.status(404).json({ error: 'One or both users not found' });
 
-        // Check if a conversation already exists between these users
         const existingConversation = await Conversation.findOne({
             where: {
                 [Op.or]: [
@@ -27,11 +26,9 @@ router.post('/', async (req, res) => {
         });
 
         if (existingConversation) {
-            // If a conversation already exists, return it instead of creating a new one
             return res.status(200).json(existingConversation);
         }
 
-        // Create the new conversation with the encrypted session keys
         const conversation = await Conversation.create({
             user1_id,
             user2_id,
@@ -45,6 +42,7 @@ router.post('/', async (req, res) => {
         res.status(500).json({ error: "Error creating conversation" });
     }
 });
+
 
 
 // Get all conversations for a user
