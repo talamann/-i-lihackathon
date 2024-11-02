@@ -3,19 +3,52 @@ const express = require('express');
 const crypto = require('crypto');
 const sendVerificationEmail = require('../utils/email');
 const User = require('../models/User');
+console.log("User model:", User); 
 const router = express.Router();
+
+
 
 // routes/users.js
 router.post('/', async (req, res) => {
+    const { username, email, password } = req.body;
+
     try {
-        const { username, email, password } = req.body;
-        const newUser = await User.create({ username, email, password });
-        res.status(201).json(newUser);
+        // Generate RSA key pair
+        const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+            modulusLength: 2048,  // Length of the key
+            publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
+            privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
+        });
+        
+        // Log to check if keys are generated properly
+        console.log("Public Key:", publicKey);
+        console.log("Private Key:", privateKey);
+        
+
+        // Create the user with the generated public key
+        const newUser = await User.create({
+            username,
+            email,
+            password,  // Ensure this is hashed in production
+            publicKey,  // Store the public key in the database
+            isVerified: false,  // Assuming this field exists
+        });
+
+        // Respond with the user details and private key
+        res.status(201).json({
+            message: 'User created successfully',
+            user: {
+                id: newUser.id,
+                username: newUser.username,
+                email: newUser.email,
+            },
+            privateKey,  // Send the private key to the client only
+        });
     } catch (error) {
-        console.error("Error creating user:", error); // Log the error for debugging
+        console.error('Error creating user:', error);
         res.status(500).json({ error: error.message });
     }
-});
+}); 
 
 // Read all users
 router.get('/', async (req, res) => {
@@ -103,7 +136,7 @@ router.post('/register', async (req, res) => {
             // Send specific validation messages if available
             return res.status(400).json({ error: error.errors.map(e => e.message) });
         }
-        res.status(400).json({ error: error.errors.map(e => e.message) });
+        res.status(500).json({ error: 'Error registering user' });
     }
 });
 
